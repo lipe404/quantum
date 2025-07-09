@@ -10,11 +10,30 @@ class QuantumDriftGame {
     this.startTime = 0;
     this.lastFrameTime = 0;
 
+    // Novos sistemas
+    this.achievementSystem = new AchievementSystem(this);
+    this.tutorial = new InteractiveTutorial(this);
+    this.settings = Utils.loadFromLocalStorage(
+      "gameSettings",
+      this.getDefaultSettings()
+    );
+
     this.setupDimensions();
     this.setupUI();
     this.loadGameData();
 
     this.gameLoop();
+  }
+
+  getDefaultSettings() {
+    return {
+      sfxVolume: 70,
+      soundsEnabled: true,
+      vibrationEnabled: true,
+      swipeSensitivity: 30,
+      showGrid: true,
+      animationsEnabled: true,
+    };
   }
 
   setupDimensions() {
@@ -74,6 +93,65 @@ class QuantumDriftGame {
     document
       .getElementById("closeTutorialBtn")
       .addEventListener("click", () => this.closeTutorial());
+
+    // Novos event listeners
+    document
+      .getElementById("closeSettingsBtn")
+      .addEventListener("click", () => this.closeSettings());
+    document
+      .getElementById("viewStats")
+      .addEventListener("click", () => this.showStats());
+    document
+      .getElementById("closeStatsBtn")
+      .addEventListener("click", () => this.closeStats());
+    document
+      .getElementById("resetProgress")
+      .addEventListener("click", () => this.resetProgress());
+
+    // Configurações
+    this.setupSettingsControls();
+  }
+
+  setupSettingsControls() {
+    // Volume
+    const sfxVolumeSlider = document.getElementById("sfxVolume");
+    sfxVolumeSlider.value = this.settings.sfxVolume;
+    sfxVolumeSlider.addEventListener("input", (e) => {
+      this.settings.sfxVolume = e.target.value;
+      document.getElementById("sfxVolumeValue").textContent =
+        e.target.value + "%";
+      this.saveSettings();
+    });
+
+    // Toggle buttons
+    this.setupToggleButton("toggleSounds", "soundsEnabled");
+    this.setupToggleButton("toggleVibration", "vibrationEnabled");
+    this.setupToggleButton("toggleGrid", "showGrid");
+    this.setupToggleButton("toggleAnimations", "animationsEnabled");
+
+    // Sensibilidade
+    const swipeSlider = document.getElementById("swipeSensitivity");
+    swipeSlider.value = this.settings.swipeSensitivity;
+    swipeSlider.addEventListener("input", (e) => {
+      this.settings.swipeSensitivity = e.target.value;
+      document.getElementById("swipeSensitivityValue").textContent =
+        e.target.value + "px";
+      this.inputHandler.minSwipeDistance = parseInt(e.target.value);
+      this.saveSettings();
+    });
+  }
+
+  setupToggleButton(buttonId, settingKey) {
+    const button = document.getElementById(buttonId);
+    button.classList.toggle("active", this.settings[settingKey]);
+    button.textContent = this.settings[settingKey] ? "ON" : "OFF";
+
+    button.addEventListener("click", () => {
+      this.settings[settingKey] = !this.settings[settingKey];
+      button.classList.toggle("active", this.settings[settingKey]);
+      button.textContent = this.settings[settingKey] ? "ON" : "OFF";
+      this.saveSettings();
+    });
   }
 
   startGame() {
@@ -158,6 +236,29 @@ class QuantumDriftGame {
     this.gameState = "won";
     const playTime = Date.now() - this.startTime;
     const stars = this.calculateStars(this.moves, playTime);
+
+    // Atualizar estatísticas
+    this.achievementSystem.updateStats("levelsCompleted", 1);
+    this.achievementSystem.updateStats("totalMoves", this.moves);
+    this.achievementSystem.updateStats("totalPlayTime", playTime);
+    this.achievementSystem.updateStats("totalStars", stars);
+    this.achievementSystem.updateStats("fastestLevel", playTime, "min");
+
+    if (stars === 3) {
+      this.achievementSystem.updateStats("perfectLevels", 1);
+    }
+
+    // Verificar dimensões ativas
+    this.achievementSystem.updateStats(
+      "maxDimensionsActive",
+      this.player.activeDimensions.length,
+      "max"
+    );
+    this.achievementSystem.updateStats(
+      "dimensionsUnlocked",
+      this.player.activeDimensions.length,
+      "max"
+    );
 
     this.showWinScreen(stars);
     this.saveProgress();
@@ -246,8 +347,18 @@ class QuantumDriftGame {
   }
 
   showTutorial() {
-    this.gameState = "tutorial";
-    this.showScreen("tutorialScreen");
+    const tutorialCompleted = Utils.loadFromLocalStorage(
+      "tutorialCompleted",
+      false
+    );
+
+    if (!tutorialCompleted) {
+      this.tutorial.start();
+    } else {
+      // Mostrar tutorial simples para revisão
+      this.gameState = "tutorial";
+      this.showScreen("tutorialScreen");
+    }
   }
 
   closeTutorial() {
@@ -255,8 +366,68 @@ class QuantumDriftGame {
   }
 
   showSettings() {
-    // Implementar tela de configurações
-    alert("Configurações em desenvolvimento!");
+    this.showScreen("settingsScreen");
+  }
+
+  closeSettings() {
+    this.goToMenu();
+  }
+
+  showStats() {
+    this.updateStatsDisplay();
+    this.showScreen("statsScreen");
+  }
+
+  closeStats() {
+    this.showScreen("settingsScreen");
+  }
+
+  updateStatsDisplay() {
+    const stats = this.achievementSystem.getStats();
+
+    document.getElementById("totalLevelsCompleted").textContent =
+      stats.levelsCompleted;
+    document.getElementById("totalMoves").textContent = stats.totalMoves;
+    document.getElementById("totalPlayTime").textContent = this.formatTime(
+      stats.totalPlayTime
+    );
+    document.getElementById("totalStars").textContent = stats.totalStars;
+    document.getElementById("perfectLevels").textContent = stats.perfectLevels;
+    document.getElementById("dimensionsUnlocked").textContent =
+      stats.dimensionsUnlocked;
+  }
+
+  formatTime(milliseconds) {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  }
+
+  resetProgress() {
+    if (
+      confirm(
+        "Tem certeza que deseja resetar todo o progresso? Esta ação não pode ser desfeita."
+      )
+    ) {
+      this.achievementSystem.resetStats();
+      this.levelManager.currentLevel = 1;
+      Utils.saveToLocalStorage("quantumDriftProgress", null);
+      Utils.saveToLocalStorage("tutorialCompleted", false);
+      alert("Progresso resetado com sucesso!");
+      this.closeSettings();
+    }
+  }
+
+  saveSettings() {
+    Utils.saveToLocalStorage("gameSettings", this.settings);
   }
 
   showScreen(screenId) {

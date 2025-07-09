@@ -92,10 +92,12 @@
       <!-- Tela de Configurações -->
       <div id="settingsScreen" class="screen overlay">
         <div class="settings-content">
-          <h2>⚙️ CONFIGURAÇÕES</h2>
+          <h2>
+            CONFIGURAÇÕES
+          </h2>
 
           <div class="settings-section">
-            <h3>🔊 Áudio</h3>
+            <h3>Áudio</h3>
             <div class="setting-item">
               <label>Volume dos Efeitos</label>
               <input type="range" id="sfxVolume" min="0" max="100" value="70" />
@@ -112,7 +114,7 @@
           </div>
 
           <div class="settings-section">
-            <h3>🎮 Jogabilidade</h3>
+            <h3>Jogabilidade</h3>
             <div class="setting-item">
               <label>Sensibilidade do Swipe</label>
               <input
@@ -137,7 +139,7 @@
           </div>
 
           <div class="settings-section">
-            <h3>📊 Dados</h3>
+            <h3>Dados</h3>
             <div class="setting-item">
               <label>Progresso do Jogo</label>
               <button id="resetProgress" class="btn secondary small">
@@ -159,7 +161,7 @@
       <!-- Tela de Estatísticas -->
       <div id="statsScreen" class="screen overlay">
         <div class="stats-content">
-          <h2>📊 ESTATÍSTICAS</h2>
+          <h2>ESTATÍSTICAS</h2>
 
           <div class="stats-grid">
             <div class="stat-card">
@@ -251,7 +253,7 @@
         <div id="tutorialSteps">
           <!-- Passo 1 -->
           <div class="tutorial-step active" data-step="1">
-            <h3>🎯 Movimento Básico</h3>
+            <h3>Movimento Básico</h3>
             <p>Deslize para mover sua partícula. Tente mover para a direita!</p>
             <div class="tutorial-demo">
               <canvas id="tutorialCanvas1" width="150" height="150"></canvas>
@@ -261,7 +263,7 @@
 
           <!-- Passo 2 -->
           <div class="tutorial-step" data-step="2">
-            <h3>🌀 Múltiplas Dimensões</h3>
+            <h3>Múltiplas Dimensões</h3>
             <p>Sua partícula existe em várias dimensões simultaneamente!</p>
             <div class="tutorial-demo">
               <canvas id="tutorialCanvas2" width="150" height="150"></canvas>
@@ -270,7 +272,7 @@
 
           <!-- Passo 3 -->
           <div class="tutorial-step" data-step="3">
-            <h3>⚡ Coletando Energia</h3>
+            <h3>Coletando Energia</h3>
             <p>Colete os orbs dourados em todas as dimensões!</p>
             <div class="tutorial-demo">
               <canvas id="tutorialCanvas3" width="150" height="150"></canvas>
@@ -279,7 +281,7 @@
 
           <!-- Passo 4 -->
           <div class="tutorial-step" data-step="4">
-            <h3>🚫 Evitando Obstáculos</h3>
+            <h3>Evitando Obstáculos</h3>
             <p>Cuidado com os blocos vermelhos - eles bloqueiam seu caminho!</p>
             <div class="tutorial-demo">
               <canvas id="tutorialCanvas4" width="150" height="150"></canvas>
@@ -288,7 +290,7 @@
 
           <!-- Passo 5 -->
           <div class="tutorial-step" data-step="5">
-            <h3>🌟 Portais Quânticos</h3>
+            <h3>Portais Quânticos</h3>
             <p>Use portais para ativar novas dimensões!</p>
             <div class="tutorial-demo">
               <canvas id="tutorialCanvas5" width="150" height="150"></canvas>
@@ -306,6 +308,8 @@
       </div>
     </div>
 
+    <script src="js/achievements.js"></script>
+    <script src="js/tutorial.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/input.js"></script>
     <script src="js/dimension.js"></script>
