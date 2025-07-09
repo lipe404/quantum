@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>Quantum</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/animations.css" />
+    <meta name="theme-color" content="#1a1a2e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+  </head>
+  <body>
+    <div id="gameContainer">
+      <!-- Menu Principal -->
+      <div id="mainMenu" class="screen active">
+        <div class="logo">
+          <h1>QUANTUM</h1>
+        </div>
+        <div class="menu-buttons">
+          <button id="playBtn" class="btn primary">JOGAR</button>
+          <button id="tutorialBtn" class="btn secondary">TUTORIAL</button>
+          <button id="settingsBtn" class="btn secondary">CONFIGURAÇÕES</button>
+        </div>
+        <div class="version">v1.0.0</div>
+      </div>
+
+      <!-- Tela do Jogo -->
+      <div id="gameScreen" class="screen">
+        <div id="gameHUD">
+          <div class="hud-left">
+            <div id="levelInfo">Nível <span id="currentLevel">1</span></div>
+            <div id="movesCount">Movimentos: <span id="moves">0</span></div>
+          </div>
+          <div class="hud-right">
+            <div id="energyCount">
+              Energia: <span id="energy">0</span>/<span id="totalEnergy"
+                >0</span
+              >
+            </div>
+            <button id="pauseBtn" class="btn-icon">⏸️</button>
+          </div>
+        </div>
+
+        <div id="gameCanvas">
+          <canvas id="dimension1" class="dimension-canvas"></canvas>
+          <canvas id="dimension2" class="dimension-canvas"></canvas>
+          <canvas id="dimension3" class="dimension-canvas"></canvas>
+          <canvas id="dimension4" class="dimension-canvas"></canvas>
+        </div>
+
+        <div id="dimensionIndicator">
+          <div class="dim-indicator active" data-dim="1"></div>
+          <div class="dim-indicator active" data-dim="2"></div>
+          <div class="dim-indicator" data-dim="3"></div>
+          <div class="dim-indicator" data-dim="4"></div>
+        </div>
+
+        <div id="powerButton" class="power-btn">⚡</div>
+      </div>
+
+      <!-- Tela de Pausa -->
+      <div id="pauseScreen" class="screen overlay">
+        <div class="pause-content">
+          <h2>PAUSA</h2>
+          <button id="resumeBtn" class="btn primary">CONTINUAR</button>
+          <button id="restartBtn" class="btn secondary">REINICIAR</button>
+          <button id="menuBtn" class="btn secondary">MENU</button>
+        </div>
+      </div>
+
+      <!-- Tela de Vitória -->
+      <div id="winScreen" class="screen overlay">
+        <div class="win-content">
+          <h2>NÍVEL COMPLETO!</h2>
+          <div class="stats">
+            <p>Movimentos: <span id="finalMoves">0</span></p>
+            <p>Energia Coletada: <span id="finalEnergy">0</span></p>
+            <div class="stars" id="starsEarned"></div>
+          </div>
+          <button id="nextLevelBtn" class="btn primary">PRÓXIMO NÍVEL</button>
+          <button id="replayBtn" class="btn secondary">JOGAR NOVAMENTE</button>
+        </div>
+      </div>
+
+      <!-- Tela de Configurações -->
+      <div id="settingsScreen" class="screen overlay">
+        <div class="settings-content">
+          <h2>⚙️ CONFIGURAÇÕES</h2>
+
+          <div class="settings-section">
+            <h3>🔊 Áudio</h3>
+            <div class="setting-item">
+              <label>Volume dos Efeitos</label>
+              <input type="range" id="sfxVolume" min="0" max="100" value="70" />
+              <span id="sfxVolumeValue">70%</span>
+            </div>
+            <div class="setting-item">
+              <label>Sons</label>
+              <button id="toggleSounds" class="toggle-btn active">ON</button>
+            </div>
+            <div class="setting-item">
+              <label>Vibração</label>
+              <button id="toggleVibration" class="toggle-btn active">ON</button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>🎮 Jogabilidade</h3>
+            <div class="setting-item">
+              <label>Sensibilidade do Swipe</label>
+              <input
+                type="range"
+                id="swipeSensitivity"
+                min="10"
+                max="100"
+                value="30"
+              />
+              <span id="swipeSensitivityValue">30px</span>
+            </div>
+            <div class="setting-item">
+              <label>Mostrar Grade</label>
+              <button id="toggleGrid" class="toggle-btn active">ON</button>
+            </div>
+            <div class="setting-item">
+              <label>Animações</label>
+              <button id="toggleAnimations" class="toggle-btn active">
+                ON
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>📊 Dados</h3>
+            <div class="setting-item">
+              <label>Progresso do Jogo</label>
+              <button id="resetProgress" class="btn secondary small">
+                RESETAR
+              </button>
+            </div>
+            <div class="setting-item">
+              <label>Estatísticas</label>
+              <button id="viewStats" class="btn secondary small">VER</button>
+            </div>
+          </div>
+
+          <div class="settings-controls">
+            <button id="closeSettingsBtn" class="btn primary">FECHAR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tela de Estatísticas -->
+      <div id="statsScreen" class="screen overlay">
+        <div class="stats-content">
+          <h2>📊 ESTATÍSTICAS</h2>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-number" id="totalLevelsCompleted">0</div>
+              <div class="stat-label">Níveis Completos</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="totalMoves">0</div>
+              <div class="stat-label">Movimentos Totais</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="totalPlayTime">0</div>
+              <div class="stat-label">Tempo Jogado</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="totalStars">0</div>
+              <div class="stat-label">Estrelas Coletadas</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="perfectLevels">0</div>
+              <div class="stat-label">Níveis Perfeitos</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number" id="dimensionsUnlocked">2</div>
+              <div class="stat-label">Dimensões Desbloqueadas</div>
+            </div>
+          </div>
+
+          <button id="closeStatsBtn" class="btn primary">FECHAR</button>
+        </div>
+      </div>
+
+      <!-- Tela de Conquistas -->
+      <div id="achievementsScreen" class="screen overlay">
+        <div class="achievements-content">
+          <h2>🏆 CONQUISTAS</h2>
+
+          <div class="achievements-list" id="achievementsList">
+            <!-- Conquistas serão geradas dinamicamente -->
+          </div>
+
+          <button id="closeAchievementsBtn" class="btn primary">FECHAR</button>
+        </div>
+      </div>
+
+      <!-- Notificação de Conquista -->
+      <div id="achievementNotification" class="achievement-notification">
+        <div class="achievement-icon">🏆</div>
+        <div class="achievement-text">
+          <div class="achievement-title">Conquista Desbloqueada!</div>
+          <div class="achievement-description"></div>
+        </div>
+      </div>
+
+      <!-- Tutorial -->
+      <div id="tutorialScreen" class="screen overlay">
+        <div class="tutorial-content">
+          <h2>COMO JOGAR</h2>
+          <div class="tutorial-steps">
+            <div class="step active">
+              <h3>1. Múltiplas Dimensões</h3>
+              <p>Sua partícula existe em várias dimensões ao mesmo tempo</p>
+            </div>
+            <div class="step">
+              <h3>2. Movimento Sincronizado</h3>
+              <p>Quando você se move, todas as versões se movem juntas</p>
+            </div>
+            <div class="step">
+              <h3>3. Colete Energia</h3>
+              <p>Colete todos os orbs de energia em todas as dimensões</p>
+            </div>
+          </div>
+          <button id="closeTutorialBtn" class="btn primary">ENTENDI</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tutorial Interativo -->
+    <div id="interactiveTutorialScreen" class="screen overlay">
+      <div class="tutorial-content">
+        <div class="tutorial-header">
+          <h2>TUTORIAL INTERATIVO</h2>
+          <div class="tutorial-progress">
+            <span id="tutorialStep">1</span> /
+            <span id="totalTutorialSteps">5</span>
+          </div>
+        </div>
+
+        <div id="tutorialSteps">
+          <!-- Passo 1 -->
+          <div class="tutorial-step active" data-step="1">
+            <h3>🎯 Movimento Básico</h3>
+            <p>Deslize para mover sua partícula. Tente mover para a direita!</p>
+            <div class="tutorial-demo">
+              <canvas id="tutorialCanvas1" width="150" height="150"></canvas>
+              <div class="tutorial-arrow">→</div>
+            </div>
+          </div>
+
+          <!-- Passo 2 -->
+          <div class="tutorial-step" data-step="2">
+            <h3>🌀 Múltiplas Dimensões</h3>
+            <p>Sua partícula existe em várias dimensões simultaneamente!</p>
+            <div class="tutorial-demo">
+              <canvas id="tutorialCanvas2" width="150" height="150"></canvas>
+            </div>
+          </div>
+
+          <!-- Passo 3 -->
+          <div class="tutorial-step" data-step="3">
+            <h3>⚡ Coletando Energia</h3>
+            <p>Colete os orbs dourados em todas as dimensões!</p>
+            <div class="tutorial-demo">
+              <canvas id="tutorialCanvas3" width="150" height="150"></canvas>
+            </div>
+          </div>
+
+          <!-- Passo 4 -->
+          <div class="tutorial-step" data-step="4">
+            <h3>🚫 Evitando Obstáculos</h3>
+            <p>Cuidado com os blocos vermelhos - eles bloqueiam seu caminho!</p>
+            <div class="tutorial-demo">
+              <canvas id="tutorialCanvas4" width="150" height="150"></canvas>
+            </div>
+          </div>
+
+          <!-- Passo 5 -->
+          <div class="tutorial-step" data-step="5">
+            <h3>🌟 Portais Quânticos</h3>
+            <p>Use portais para ativar novas dimensões!</p>
+            <div class="tutorial-demo">
+              <canvas id="tutorialCanvas5" width="150" height="150"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="tutorial-controls">
+          <button id="prevTutorialBtn" class="btn secondary" disabled>
+            ANTERIOR
+          </button>
+          <button id="nextTutorialBtn" class="btn primary">PRÓXIMO</button>
+          <button id="skipTutorialBtn" class="btn secondary">PULAR</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/input.js"></script>
+    <script src="js/dimension.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/level.js"></script>
+    <script src="js/game.js"></script>
+  </body>
+</html>
