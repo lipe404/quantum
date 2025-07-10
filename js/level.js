@@ -2,6 +2,7 @@ class LevelManager {
   constructor() {
     this.currentLevel = 1;
     this.levels = this.generateLevels();
+    this.infiniteLevels = true; // Ativar níveis infinitos após os fixos
   }
 
   generateLevels() {
@@ -40,7 +41,7 @@ class LevelManager {
       },
     });
 
-    // Nível 2 - Introdução aos portais
+    // Nível 2 - CORRIGIDO - Introdução aos portais
     levels.push({
       id: 2,
       name: "Portais Quânticos",
@@ -58,10 +59,10 @@ class LevelManager {
             { x: 6, y: 6 },
           ],
           energyOrbs: [
-            { x: 5, y: 5 },
+            { x: 2, y: 2 }, // CORRIGIDO: Movido para posição acessível
             { x: 8, y: 8 },
           ],
-          portals: [{ x: 2, y: 2, targetDimension: 3 }],
+          portals: [{ x: 7, y: 3, targetDimension: 3 }], // CORRIGIDO: Portal em posição acessível
         },
         2: {
           obstacles: [
@@ -160,26 +161,32 @@ class LevelManager {
       },
     });
 
-    // Gerar mais níveis proceduralmente
-    for (let i = 4; i <= 20; i++) {
-      levels.push(this.generateProceduralLevel(i));
-    }
-
     return levels;
   }
 
-  generateProceduralLevel(levelNumber) {
-    const difficulty = Math.min(levelNumber / 5, 4);
-    const activeDimensions = [];
-
-    // Determinar dimensões ativas baseado no nível
-    if (levelNumber <= 5) {
-      activeDimensions.push(1, 2);
-    } else if (levelNumber <= 10) {
-      activeDimensions.push(1, 2, 3);
+  getCurrentLevel() {
+    if (this.currentLevel <= this.levels.length) {
+      return this.levels[this.currentLevel - 1];
     } else {
-      activeDimensions.push(1, 2, 3, 4);
+      // Gerar nível procedural infinito
+      return this.generateInfiniteLevel(this.currentLevel);
     }
+  }
+
+  nextLevel() {
+    this.currentLevel++;
+    return this.getCurrentLevel();
+  }
+
+  resetToLevel(levelNumber) {
+    this.currentLevel = Math.max(1, levelNumber);
+    return this.getCurrentLevel();
+  }
+
+  // NOVO SISTEMA DE NÍVEIS INFINITOS
+  generateInfiniteLevel(levelNumber) {
+    const difficulty = this.calculateDifficulty(levelNumber);
+    const activeDimensions = this.getDimensionsForLevel(levelNumber);
 
     const level = {
       id: levelNumber,
@@ -189,60 +196,417 @@ class LevelManager {
     };
 
     activeDimensions.forEach((dimId) => {
-      level.dimensions[dimId] = this.generateDimensionLayout(
+      level.dimensions[dimId] = this.generateSmartDimensionLayout(
         difficulty,
-        levelNumber
+        levelNumber,
+        dimId
       );
     });
+
+    // Validar se o nível é solucionável
+    if (!this.validateLevel(level)) {
+      console.warn(`Nível ${levelNumber} regenerado por ser insolucionável`);
+      return this.generateInfiniteLevel(levelNumber);
+    }
 
     return level;
   }
 
-  generateDimensionLayout(difficulty, levelNumber) {
+  calculateDifficulty(levelNumber) {
+    // Dificuldade progressiva mais suave
+    const baseDifficulty = Math.min((levelNumber - 3) / 10, 1);
+    const cycleDifficulty = 0.3 + baseDifficulty * 0.7;
+
+    return {
+      obstacleRatio: 0.15 + cycleDifficulty * 0.25, // 15% a 40% de obstáculos
+      energyCount: Math.max(
+        2,
+        Math.min(6, 2 + Math.floor(cycleDifficulty * 4))
+      ),
+      portalChance: levelNumber > 5 ? 0.3 + cycleDifficulty * 0.4 : 0,
+      complexity: cycleDifficulty,
+    };
+  }
+
+  getDimensionsForLevel(levelNumber) {
+    if (levelNumber <= 5) {
+      return [1, 2];
+    } else if (levelNumber <= 15) {
+      return [1, 2, 3];
+    } else {
+      return [1, 2, 3, 4];
+    }
+  }
+
+  generateSmartDimensionLayout(difficulty, levelNumber, dimensionId) {
     const layout = {
       obstacles: [],
       energyOrbs: [],
       portals: [],
     };
 
-    // Gerar obstáculos
-    const obstacleCount = Math.floor(
-      difficulty * 3 + Utils.randomBetween(2, 6)
-    );
-    for (let i = 0; i < obstacleCount; i++) {
-      let x, y;
-      do {
-        x = Math.floor(Utils.randomBetween(0, GAME_CONFIG.GRID_SIZE));
-        y = Math.floor(Utils.randomBetween(0, GAME_CONFIG.GRID_SIZE));
-      } while ((x <= 1 && y <= 1) || this.isPositionOccupied(layout, x, y));
+    // Usar seed baseado no nível para consistência
+    const seed = levelNumber * 1000 + dimensionId;
+    const rng = this.createSeededRNG(seed);
 
-      layout.obstacles.push({ x, y });
-    }
+    // Gerar obstáculos com padrões inteligentes
+    this.generateSmartObstacles(layout, difficulty, rng);
 
-    // Gerar orbs de energia
-    const energyCount = Math.floor(difficulty + Utils.randomBetween(2, 4));
-    for (let i = 0; i < energyCount; i++) {
-      let x, y;
-      do {
-        x = Math.floor(Utils.randomBetween(0, GAME_CONFIG.GRID_SIZE));
-        y = Math.floor(Utils.randomBetween(0, GAME_CONFIG.GRID_SIZE));
-      } while ((x <= 1 && y <= 1) || this.isPositionOccupied(layout, x, y));
+    // Gerar orbs de energia em posições acessíveis
+    this.generateAccessibleEnergyOrbs(layout, difficulty, rng);
 
-      layout.energyOrbs.push({ x, y });
-    }
-
-    // Gerar portais (ocasionalmente)
-    if (levelNumber > 3 && Math.random() < 0.3) {
-      let x, y;
-      do {
-        x = Math.floor(Utils.randomBetween(0, GAME_CONFIG.GRID_SIZE));
-        y = Math.floor(Utils.randomBetween(0, GAME_CONFIG.GRID_SIZE));
-      } while ((x <= 1 && y <= 1) || this.isPositionOccupied(layout, x, y));
-
-      layout.portals.push({ x, y, targetDimension: null });
+    // Gerar portais ocasionalmente
+    if (levelNumber > 5 && rng() < difficulty.portalChance) {
+      this.generatePortal(layout, rng);
     }
 
     return layout;
+  }
+
+  createSeededRNG(seed) {
+    let currentSeed = seed;
+    return function () {
+      currentSeed = (currentSeed * 9301 + 49297) % 233280;
+      return currentSeed / 233280;
+    };
+  }
+
+  generateSmartObstacles(layout, difficulty, rng) {
+    const totalCells = GAME_CONFIG.GRID_SIZE * GAME_CONFIG.GRID_SIZE;
+    const maxObstacles = Math.floor(totalCells * difficulty.obstacleRatio);
+
+    // Padrões de obstáculos
+    const patterns = [
+      this.generateLinePattern,
+      this.generateLShapePattern,
+      this.generateClusterPattern,
+      this.generateMazePattern,
+    ];
+
+    let obstaclesPlaced = 0;
+    const maxAttempts = 50;
+    let attempts = 0;
+
+    while (obstaclesPlaced < maxObstacles && attempts < maxAttempts) {
+      const pattern = patterns[Math.floor(rng() * patterns.length)];
+      const newObstacles = pattern.call(this, rng, layout);
+
+      // Verificar se não bloqueia áreas essenciais
+      if (this.isPatternValid(layout, newObstacles)) {
+        newObstacles.forEach((obs) => {
+          if (obstaclesPlaced < maxObstacles) {
+            layout.obstacles.push(obs);
+            obstaclesPlaced++;
+          }
+        });
+      }
+      attempts++;
+    }
+  }
+
+  generateLinePattern(rng, layout) {
+    const obstacles = [];
+    const isHorizontal = rng() > 0.5;
+    const length = 2 + Math.floor(rng() * 4); // 2-5 blocos
+
+    if (isHorizontal) {
+      const y = 2 + Math.floor(rng() * (GAME_CONFIG.GRID_SIZE - 4));
+      const startX =
+        2 + Math.floor(rng() * (GAME_CONFIG.GRID_SIZE - length - 2));
+
+      for (let i = 0; i < length; i++) {
+        const x = startX + i;
+        if (!this.isPositionOccupied(layout, x, y)) {
+          obstacles.push({ x, y });
+        }
+      }
+    } else {
+      const x = 2 + Math.floor(rng() * (GAME_CONFIG.GRID_SIZE - 4));
+      const startY =
+        2 + Math.floor(rng() * (GAME_CONFIG.GRID_SIZE - length - 2));
+
+      for (let i = 0; i < length; i++) {
+        const y = startY + i;
+        if (!this.isPositionOccupied(layout, x, y)) {
+          obstacles.push({ x, y });
+        }
+      }
+    }
+
+    return obstacles;
+  }
+
+  generateLShapePattern(rng, layout) {
+    const obstacles = [];
+    const size = 2 + Math.floor(rng() * 3); // 2-4 blocos por lado
+    const x = 2 + Math.floor(rng() * (GAME_CONFIG.GRID_SIZE - size - 2));
+    const y = 2 + Math.floor(rng() * (GAME_CONFIG.GRID_SIZE - size - 2));
+
+    // Braço horizontal
+    for (let i = 0; i < size; i++) {
+      if (!this.isPositionOccupied(layout, x + i, y)) {
+        obstacles.push({ x: x + i, y });
+      }
+    }
+
+    // Braço vertical
+    for (let i = 1; i < size; i++) {
+      if (!this.isPositionOccupied(layout, x, y + i)) {
+        obstacles.push({ x, y: y + i });
+      }
+    }
+
+    return obstacles;
+  }
+
+  generateClusterPattern(rng, layout) {
+    const obstacles = [];
+    const centerX = 2 + Math.floor(rng() * (GAME_CONFIG.GRID_SIZE - 4));
+    const centerY = 2 + Math.floor(rng() * (GAME_CONFIG.GRID_SIZE - 4));
+    const clusterSize = 2 + Math.floor(rng() * 3);
+
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (rng() > 0.4) {
+          // 60% chance para cada célula
+          const x = centerX + dx;
+          const y = centerY + dy;
+
+          if (
+            x >= 0 &&
+            x < GAME_CONFIG.GRID_SIZE &&
+            y >= 0 &&
+            y < GAME_CONFIG.GRID_SIZE &&
+            !this.isPositionOccupied(layout, x, y)
+          ) {
+            obstacles.push({ x, y });
+          }
+        }
+      }
+    }
+
+    return obstacles;
+  }
+
+  generateMazePattern(rng, layout) {
+    const obstacles = [];
+    const spacing = 3;
+
+    for (let x = 3; x < GAME_CONFIG.GRID_SIZE - 1; x += spacing) {
+      for (let y = 3; y < GAME_CONFIG.GRID_SIZE - 1; y += spacing) {
+        if (rng() > 0.5 && !this.isPositionOccupied(layout, x, y)) {
+          obstacles.push({ x, y });
+
+          // Adicionar extensão aleatória
+          const direction = Math.floor(rng() * 4);
+          const extensions = [
+            { x: x + 1, y },
+            { x: x - 1, y },
+            { x, y: y + 1 },
+            { x, y: y - 1 },
+          ];
+
+          const ext = extensions[direction];
+          if (
+            ext.x >= 0 &&
+            ext.x < GAME_CONFIG.GRID_SIZE &&
+            ext.y >= 0 &&
+            ext.y < GAME_CONFIG.GRID_SIZE &&
+            !this.isPositionOccupied(layout, ext.x, ext.y)
+          ) {
+            obstacles.push(ext);
+          }
+        }
+      }
+    }
+
+    return obstacles;
+  }
+
+  isPatternValid(layout, newObstacles) {
+    // Verificar se não bloqueia a posição inicial
+    const hasStartBlocked = newObstacles.some(
+      (obs) => obs.x <= 1 && obs.y <= 1
+    );
+
+    if (hasStartBlocked) return false;
+
+    // Verificar se não cria áreas completamente isoladas
+    const tempLayout = {
+      obstacles: [...layout.obstacles, ...newObstacles],
+      energyOrbs: layout.energyOrbs,
+      portals: layout.portals,
+    };
+
+    return this.hasAccessibleAreas(tempLayout);
+  }
+
+  hasAccessibleAreas(layout) {
+    const visited = new Set();
+    const queue = [{ x: 1, y: 1 }]; // Começar da posição inicial
+    let accessibleCells = 0;
+
+    while (queue.length > 0) {
+      const { x, y } = queue.shift();
+      const key = `${x},${y}`;
+
+      if (visited.has(key)) continue;
+      visited.add(key);
+      accessibleCells++;
+
+      // Verificar células adjacentes
+      const neighbors = [
+        { x: x + 1, y },
+        { x: x - 1, y },
+        { x, y: y + 1 },
+        { x, y: y - 1 },
+      ];
+
+      neighbors.forEach((neighbor) => {
+        if (
+          neighbor.x >= 0 &&
+          neighbor.x < GAME_CONFIG.GRID_SIZE &&
+          neighbor.y >= 0 &&
+          neighbor.y < GAME_CONFIG.GRID_SIZE &&
+          !this.isPositionOccupied(layout, neighbor.x, neighbor.y) &&
+          !visited.has(`${neighbor.x},${neighbor.y}`)
+        ) {
+          queue.push(neighbor);
+        }
+      });
+    }
+
+    // Deve ter pelo menos 30% das células acessíveis
+    const totalCells = GAME_CONFIG.GRID_SIZE * GAME_CONFIG.GRID_SIZE;
+    return accessibleCells >= totalCells * 0.3;
+  }
+
+  generateAccessibleEnergyOrbs(layout, difficulty, rng) {
+    const energyCount = difficulty.energyCount;
+    const accessiblePositions = this.findAccessiblePositions(layout);
+
+    // Filtrar posições que não estão muito próximas da posição inicial
+    const filteredPositions = accessiblePositions.filter((pos) => {
+      const distance = Math.abs(pos.x - 1) + Math.abs(pos.y - 1);
+      return distance >= 3; // Pelo menos 3 células de distância
+    });
+
+    // Selecionar posições aleatórias
+    for (let i = 0; i < energyCount && filteredPositions.length > 0; i++) {
+      const randomIndex = Math.floor(rng() * filteredPositions.length);
+      const position = filteredPositions.splice(randomIndex, 1)[0];
+      layout.energyOrbs.push(position);
+    }
+  }
+
+  findAccessiblePositions(layout) {
+    const accessible = [];
+    const visited = new Set();
+    const queue = [{ x: 1, y: 1 }];
+
+    while (queue.length > 0) {
+      const { x, y } = queue.shift();
+      const key = `${x},${y}`;
+
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      // Adicionar à lista de posições acessíveis (exceto posição inicial)
+      if (!(x === 1 && y === 1)) {
+        accessible.push({ x, y });
+      }
+
+      // Verificar células adjacentes
+      const neighbors = [
+        { x: x + 1, y },
+        { x: x - 1, y },
+        { x, y: y + 1 },
+        { x, y: y - 1 },
+      ];
+
+      neighbors.forEach((neighbor) => {
+        if (
+          neighbor.x >= 0 &&
+          neighbor.x < GAME_CONFIG.GRID_SIZE &&
+          neighbor.y >= 0 &&
+          neighbor.y < GAME_CONFIG.GRID_SIZE &&
+          !this.isPositionOccupied(layout, neighbor.x, neighbor.y) &&
+          !visited.has(`${neighbor.x},${neighbor.y}`)
+        ) {
+          queue.push(neighbor);
+        }
+      });
+    }
+
+    return accessible;
+  }
+
+  generatePortal(layout, rng) {
+    const accessiblePositions = this.findAccessiblePositions(layout);
+
+    if (accessiblePositions.length > 0) {
+      const randomIndex = Math.floor(rng() * accessiblePositions.length);
+      const position = accessiblePositions[randomIndex];
+      layout.portals.push({
+        x: position.x,
+        y: position.y,
+        targetDimension: null,
+      });
+    }
+  }
+
+  validateLevel(level) {
+    // Verificar se todos os orbs são acessíveis em todas as dimensões
+    for (const dimId of level.activeDimensions) {
+      const dimension = level.dimensions[dimId];
+      if (!dimension) continue;
+
+      for (const orb of dimension.energyOrbs) {
+        if (!this.isPositionAccessible(dimension, orb.x, orb.y)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  isPositionAccessible(dimension, targetX, targetY) {
+    const visited = new Set();
+    const queue = [{ x: 1, y: 1 }];
+
+    while (queue.length > 0) {
+      const { x, y } = queue.shift();
+      const key = `${x},${y}`;
+
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      if (x === targetX && y === targetY) {
+        return true;
+      }
+
+      const neighbors = [
+        { x: x + 1, y },
+        { x: x - 1, y },
+        { x, y: y + 1 },
+        { x, y: y - 1 },
+      ];
+
+      neighbors.forEach((neighbor) => {
+        if (
+          neighbor.x >= 0 &&
+          neighbor.x < GAME_CONFIG.GRID_SIZE &&
+          neighbor.y >= 0 &&
+          neighbor.y < GAME_CONFIG.GRID_SIZE &&
+          !this.isPositionOccupied(dimension, neighbor.x, neighbor.y) &&
+          !visited.has(`${neighbor.x},${neighbor.y}`)
+        ) {
+          queue.push(neighbor);
+        }
+      });
+    }
+
+    return false;
   }
 
   isPositionOccupied(layout, x, y) {
@@ -253,28 +617,13 @@ class LevelManager {
     );
   }
 
-  getCurrentLevel() {
-    return this.levels[this.currentLevel - 1];
-  }
-
-  nextLevel() {
-    if (this.currentLevel < this.levels.length) {
-      this.currentLevel++;
-      return this.getCurrentLevel();
-    }
-    return null;
-  }
-
-  resetToLevel(levelNumber) {
-    this.currentLevel = Math.max(1, Math.min(levelNumber, this.levels.length));
-    return this.getCurrentLevel();
-  }
-
   getLevelProgress() {
     return {
       current: this.currentLevel,
-      total: this.levels.length,
-      percentage: (this.currentLevel / this.levels.length) * 100,
+      total: this.infiniteLevels ? "∞" : this.levels.length,
+      percentage: this.infiniteLevels
+        ? Math.min((this.currentLevel / 50) * 100, 100)
+        : (this.currentLevel / this.levels.length) * 100,
     };
   }
 }

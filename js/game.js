@@ -309,6 +309,14 @@ class QuantumDriftGame {
       starsContainer.appendChild(star);
     }
 
+    // Atualizar texto do botão para níveis infinitos
+    const nextBtn = document.getElementById("nextLevelBtn");
+    if (this.levelManager.currentLevel > 3) {
+      nextBtn.textContent = `NÍVEL ${this.levelManager.currentLevel + 1}`;
+    } else {
+      nextBtn.textContent = "PRÓXIMO NÍVEL";
+    }
+
     this.showScreen("winScreen");
   }
 
@@ -317,8 +325,8 @@ class QuantumDriftGame {
     if (nextLevel) {
       this.startGame();
     } else {
-      // Jogo completo
-      alert("Parabéns! Você completou todos os níveis!");
+      // Este caso nunca deveria acontecer com níveis infinitos
+      alert("Erro: Não foi possível gerar o próximo nível!");
       this.goToMenu();
     }
   }

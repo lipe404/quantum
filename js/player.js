@@ -9,7 +9,7 @@ class Player {
     this.activeDimensions = [1, 2];
     this.quantumPowerActive = false;
     this.quantumPowerCooldown = 0;
-    this.maxQuantumPowerCooldown = 5000; // 5 segundos
+    this.maxQuantumPowerCooldown = 5000;
   }
 
   move(direction, dimensions) {
@@ -35,7 +35,11 @@ class Player {
       };
 
       const dimension = dimensions[dimId];
-      if (dimension && dimension.isObstacle(newPos.x, newPos.y)) {
+      if (
+        dimension &&
+        dimension.isObstacle(newPos.x, newPos.y) &&
+        !this.quantumPowerActive
+      ) {
         canMove = false;
       }
 
@@ -53,7 +57,15 @@ class Player {
         const dimension = dimensions[dimId];
         const pos = this.positions[dimId];
         if (dimension) {
-          dimension.collectEnergyOrb(pos.x, pos.y);
+          if (dimension.collectEnergyOrb(pos.x, pos.y)) {
+            // Atualizar estatísticas quando coletar energia
+            if (this.game && this.game.achievementSystem) {
+              this.game.achievementSystem.updateStats(
+                "totalEnergyCollected",
+                1
+              );
+            }
+          }
         }
       });
 
@@ -135,7 +147,14 @@ class Player {
       this.quantumPowerActive = true;
       this.quantumPowerCooldown = this.maxQuantumPowerCooldown;
 
-      // Efeito do poder quântico - por exemplo, permitir atravessar obstáculos
+      // Atualizar estatísticas
+      if (this.game && this.game.achievementSystem) {
+        this.game.achievementSystem.updateStats("quantumPowersUsed", 1);
+      }
+
+      // Efeito visual do poder quântico
+      this.showQuantumPowerEffect();
+
       setTimeout(() => {
         this.quantumPowerActive = false;
       }, 2000);
@@ -143,6 +162,24 @@ class Player {
       Utils.playSound(1320, 300);
       Utils.vibrate([100, 100, 100]);
     }
+  }
+
+  showQuantumPowerEffect() {
+    // Criar indicador visual do poder ativo
+    const indicator = document.createElement("div");
+    indicator.className = "quantum-power-indicator active";
+    indicator.textContent = "PODER QUÂNTICO ATIVO";
+    document.body.appendChild(indicator);
+
+    setTimeout(() => {
+      indicator.classList.remove("active");
+      indicator.classList.add("cooldown");
+      indicator.textContent = "RECARREGANDO...";
+    }, 2000);
+
+    setTimeout(() => {
+      document.body.removeChild(indicator);
+    }, 5000);
   }
 
   update(deltaTime) {
